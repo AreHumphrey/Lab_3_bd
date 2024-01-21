@@ -1,5 +1,5 @@
 --19
-CREATE TRIGGER preventGroupDeletion
+CREATE TRIGGER preventDeleteGroup
     BEFORE DELETE ON Groups
     FOR EACH ROW
     WHEN EXISTS (SELECT * FROM Activity WHERE Activity.group_id = OLD.id)
@@ -14,13 +14,17 @@ SELECT * from Groups;
 DELETE FROM Groups WHERE ID = 2;
 
 --20
-CREATE TRIGGER prevent_Specialization_Deletion
+CREATE TRIGGER preventSpecializationDeletion
     BEFORE DELETE ON Specializations
     FOR EACH ROW
-    WHEN EXISTS (SELECT Activity.time_of_entrance FROM Groups JOIN Activity ON Activity.group_id = Groups.id WHERE specialization_id = OLD.id and Activity.time_of_entrance IS NOT NULL)
+    WHEN EXISTS (SELECT Activity.time_of_entrance
+                 FROM Groups
+                          JOIN Activity ON Activity.group_id = Groups.id
+                 WHERE specialization_id = OLD.id and Activity.time_of_entrance IS NOT NULL)
 BEGIN
-    SELECT RAISE(ABORT, 'Не допускается удаление специализаций, по которым были собранны непустые группы');
+    SELECT RAISE(ABORT, 'Невозможно удалять специализации, по которым существуют непустые группы');
 END;
+
 
 INSERT INTO Groups (specialization_id, group_number, course) VALUES (5, 'TH-21', 2);
 DELETE FROM Specializations WHERE id = 5;
@@ -74,23 +78,22 @@ END;
 --Тест
 INSERT INTO Subjects (group_id, discipline_id, year_semester, grade_type, teacher_id) VALUES (1, 1, '2023_1', 'Экзамен', 4);
 SELECT * FROM Subjects;
-
-
 INSERT INTO Subjects (group_id, discipline_id, year_semester, grade_type, teacher_id) VALUES (1, 1, '2023_1', 'Экзамен', 3);
 
 --24
-CREATE TRIGGER preventDuplicateStudents
+CREATE TRIGGER preventDuplicateStudent
     BEFORE INSERT ON Activity
     WHEN EXISTS (
         SELECT *
         FROM Activity
-        WHERE NEW.Student_ID = student_id
-          AND NEW.time_of_entrance IS NULL
-          AND NEW.time_of_deduction IS NULL
+        WHERE NEW.student_id = student_id
+          AND time_of_entrance IS NULL
+          AND time_of_deduction IS NULL
     )
 BEGIN
     SELECT RAISE(ABORT, 'Один студент не может числиться одновременно в разных группах.');
 END;
+
 
 --Тест
 
@@ -131,13 +134,13 @@ BEGIN
 END;
 
 --Тест
-INSERT INTO Grades (student_id, subject_id, grade) VALUES (1, 1, 5);
+INSERT INTO Grades (student_id, subject_id, grade) VALUES (2, 1, 5);
 
 SELECT * FROM Activity;
 SELECT * FROM Grades;
 SELECT * FROM Subjects;
 
-INSERT INTO Grades (student_id, subject_id, grade) VALUES (1, 2, 5);
+INSERT INTO Grades (student_id, subject_id, grade) VALUES (2, 2, 5);
 
 --27
 CREATE TRIGGER deletePreviousGrades
@@ -173,6 +176,4 @@ END;
 --Тесты
 INSERT INTO Grades (student_id, subject_id, grade, data) VALUES (1, 1, 5, '2022-09-01');
 SELECT * FROM Grades;
-
-
 INSERT INTO Grades (student_id, subject_id, grade, data) VALUES (1, 1, 5, '2024-09-01');
